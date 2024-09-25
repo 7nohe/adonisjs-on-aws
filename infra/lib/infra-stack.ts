@@ -1,0 +1,28 @@
+import * as cdk from 'aws-cdk-lib';
+import { Construct } from 'constructs';
+import * as ecr from 'aws-cdk-lib/aws-ecr'
+import { AppRunner } from './app-runner'
+import { Network } from './network';
+import { Rds } from './rds';
+
+export class InfraStack extends cdk.Stack {
+  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+    super(scope, id, props);
+
+    const repository = new ecr.Repository(this, 'AdonisJSAppRunnerRepository', {
+      lifecycleRules: [
+        {
+          tagStatus: ecr.TagStatus.ANY,
+          description: 'Keep only the 10 most recent images',
+          maxImageCount: 10,
+        },
+      ],
+    })
+
+    const { vpc, rdsSecurityGroup, subnetGroupName } = new Network(this, 'Network')
+
+    const { databaseName, databaseCluster } = new Rds(this, 'Rds', { vpc, rdsSecurityGroup, subnetGroupName, })
+
+    new AppRunner(this, 'AppRunner', { repository, databaseName, databaseCluster })
+  }
+}
