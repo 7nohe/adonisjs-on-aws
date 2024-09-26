@@ -1,13 +1,13 @@
-import * as cdk from 'aws-cdk-lib';
-import { Construct } from 'constructs';
+import * as cdk from 'aws-cdk-lib'
+import { Construct } from 'constructs'
 import * as ecr from 'aws-cdk-lib/aws-ecr'
 import { AppRunner } from './app-runner'
-import { Network } from './network';
-import { Rds } from './rds';
+import { Network } from './network'
+import { Rds } from './rds'
 
 export class InfraStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
-    super(scope, id, props);
+    super(scope, id, props)
 
     const repository = new ecr.Repository(this, 'AdonisJSAppRunnerRepository', {
       lifecycleRules: [
@@ -19,10 +19,24 @@ export class InfraStack extends cdk.Stack {
       ],
     })
 
-    const { vpc, rdsSecurityGroup, subnetGroupName } = new Network(this, 'Network')
+    const { vpc, rdsSecurityGroup, appRunnerSecurityGroup, privateSubnetName } = new Network(
+      this,
+      'Network'
+    )
 
-    const { databaseName, databaseCluster } = new Rds(this, 'Rds', { vpc, rdsSecurityGroup, subnetGroupName, })
+    const { databaseName, databaseCluster } = new Rds(this, 'Rds', {
+      vpc,
+      rdsSecurityGroup,
+      privateSubnetName,
+    })
 
-    new AppRunner(this, 'AppRunner', { repository, databaseName, databaseCluster })
+    new AppRunner(this, 'AppRunner', {
+      repository,
+      databaseName,
+      databaseCluster,
+      appRunnerSecurityGroup,
+      privateSubnetName,
+      vpc,
+    })
   }
 }
