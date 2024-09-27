@@ -3,7 +3,6 @@ import * as ec2 from 'aws-cdk-lib/aws-ec2'
 import * as apprunner from 'aws-cdk-lib/aws-apprunner'
 import * as ecr from 'aws-cdk-lib/aws-ecr'
 import * as rds from 'aws-cdk-lib/aws-rds'
-import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager'
 import { Construct } from 'constructs'
 
 interface AppRunnerProps {
@@ -13,10 +12,6 @@ interface AppRunnerProps {
   vpc: ec2.Vpc
   appRunnerSecurityGroup: ec2.SecurityGroup
   privateSubnetName: string
-}
-
-const getValueFromSecret = (secret: secretsmanager.ISecret, key: string): string => {
-  return secret.secretValueFromJson(key).unsafeUnwrap()
 }
 
 export class AppRunner extends Construct {
@@ -34,6 +29,17 @@ export class AppRunner extends Construct {
 
     const instanceRole = new iam.Role(scope, 'AppRunnerInstanceRole', {
       assumedBy: new iam.ServicePrincipal('tasks.apprunner.amazonaws.com'),
+      inlinePolicies: {
+        // Secrets Manager policy to access the database credentials
+        SecretsManagerPolicy: new iam.PolicyDocument({
+          statements: [
+            new iam.PolicyStatement({
+              actions: ['secretsmanager:GetSecretValue'],
+              resources: [databaseCluster.secret!.secretArn],
+            }),
+          ],
+        }),
+      },
     })
 
     const accessRole = new iam.Role(scope, 'AppRunnerAccessRole', {
@@ -54,7 +60,7 @@ export class AppRunner extends Construct {
       vpcConnectorName: 'adonisjs-vpc-connector',
     })
 
-    new apprunner.CfnService(this, 'AppRunnerService', {
+    new apprunner.CfnService(this, 'AdonisJSAppRunnerService', {
       instanceConfiguration: {
         instanceRoleArn: instanceRole.roleArn,
       },
@@ -74,23 +80,13 @@ export class AppRunner extends Construct {
           imageRepositoryType: 'ECR',
           imageConfiguration: {
             port: '8080',
+            runtimeEnvironmentSecrets: [
+              {
+                name: 'POSTGRES_CREDENTIALS_JSON',
+                value: databaseCluster.secret?.secretArn,
+              },
+            ],
             runtimeEnvironmentVariables: [
-              {
-                name: 'DB_HOST',
-                value: getValueFromSecret(databaseCluster.secret!, 'host'),
-              },
-              {
-                name: 'DB_PORT',
-                value: getValueFromSecret(databaseCluster.secret!, 'port'),
-              },
-              {
-                name: 'DB_USER',
-                value: getValueFromSecret(databaseCluster.secret!, 'username'),
-              },
-              {
-                name: 'DB_PASSWORD',
-                value: getValueFromSecret(databaseCluster.secret!, 'password'),
-              },
               {
                 name: 'DB_DATABASE',
                 value: databaseName,

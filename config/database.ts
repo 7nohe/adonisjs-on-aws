@@ -1,16 +1,18 @@
 import env from '#start/env'
 import { defineConfig } from '@adonisjs/lucid'
 
+const credentials = JSON.parse(env.get('POSTGRES_CREDENTIALS_JSON') ?? '{}')
+
 const dbConfig = defineConfig({
   connection: 'postgres',
   connections: {
     postgres: {
       client: 'pg',
       connection: {
-        host: env.get('DB_HOST'),
-        port: env.get('DB_PORT'),
-        user: env.get('DB_USER'),
-        password: env.get('DB_PASSWORD'),
+        host: env.get('DB_HOST') ?? credentials.host,
+        port: env.get('DB_PORT') ?? credentials.port,
+        user: env.get('DB_USER') ?? credentials.username,
+        password: env.get('DB_PASSWORD') ?? credentials.password,
         database: env.get('DB_DATABASE'),
       },
       migrations: {
