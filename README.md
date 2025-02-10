@@ -3,8 +3,11 @@
 ```bash
 cd infra
 cdk bootstrap
-cdk deploy
+NO_PREBUILT_LAMBDA=1 cdk deploy
 ```
+
+`NO_PREBUILT_LAMBDA=1` must be set to avoid the error of `Uploaded file must be a non-empty zip`.
+https://github.com/cdklabs/cdk-ecr-deployment/issues/1017
 
 Go to ECR and find the repository created by CDK.
 Get the push command and push the image to the repository.
